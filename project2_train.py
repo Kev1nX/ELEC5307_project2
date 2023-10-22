@@ -31,7 +31,14 @@ import torchvision.transforms as transforms
 from torchvision.datasets import ImageFolder
 import torch.optim as optim
 
-from network import Network # the network you used
+from network import GoogLeNet # the network you used
+from sklearn.model_selection import StratifiedKFold,cross_val_score
+from skorch import NeuralNetClassifier
+
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy import stats
+
 
 parser = argparse.ArgumentParser(description= \
                                      'scipt for training of project 2')
@@ -40,22 +47,23 @@ parser.add_argument('--cuda', action='store_true', default=False,
 args = parser.parse_args()
 generator = torch.Generator().manual_seed(5307)
 
-from torchvision.datasets import ImageFolder
-train_transform = transforms.Compose([
-        transforms.ToTensor(),
-])
+# def create_logger(final_output_path):
+#     log_file = '{}.log'.format(time.strftime('%Y-%m-%d-%H-%M'))
+#     head = '%(asctime)-15s %(message)s'
+#     logging.basicConfig(filename=os.path.join(final_output_path, log_file),
+#                         format=head)
+#     clogger = logging.getLogger()
+#     clogger.setLevel(logging.INFO)
+#     # add handler
+#     # print to stdout and log file
+#     ch = logging.StreamHandler(sys.stdout)
+#     ch.setLevel(logging.INFO)
+#     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+#     ch.setFormatter(formatter)
+#     clogger.addHandler(ch)
+#     return clogger
 
-val_transform = transforms.Compose([
-        transforms.ToTensor(),
-])
-
-
-TrainSet = ImageFolder('../2023_ELEC5307_P2Train/train', transform=train_transform)
-ValSet = ImageFolder('../2023_ELEC5307_P2Train/test', transform=val_transform)
-
-
-
-# basic training process used in last project
+# # basic training process used in last project
 def train_net(net, trainloader, valloader,learningrate,nepoch):
 ########## ToDo: Your codes goes below #######
     val_accuracy = 0
@@ -67,6 +75,7 @@ def train_net(net, trainloader, valloader,learningrate,nepoch):
     trainloss = []
     valloss = []
     epoch_time = []
+    net = net.train()
     for epoch in range(nepoch):  # loop over the dataset multiple times
         start = time.time()
         running_loss = 0.0
@@ -74,18 +83,23 @@ def train_net(net, trainloader, valloader,learningrate,nepoch):
         for i, data in enumerate(trainloader, 0):
             # get the inputs
             inputs, labels = data
+            if args.cuda:
+                inputs, labels = inputs.cuda(), labels.cuda()
             # zero the parameter gradients
             optimizer.zero_grad()
 
             # forward + backward + optimize
             outputs = net(inputs)
+            outputs = outputs.logits
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
+            if args.cuda:
+                loss = loss.cpu()
 
             # print statistics
             running_loss += loss.item()
-            if i % 1000 == 999:    # print every 20 mini-batches
+            if i % 100 == 99:    # print every 20 mini-batches
                 # print('[%d, %5d] loss: %.3f' %
                 #     (epoch + 1, i + 1, running_loss / 2000))
                 trainloss.append(running_loss/100)
@@ -96,21 +110,107 @@ def train_net(net, trainloader, valloader,learningrate,nepoch):
         for i, data in enumerate(valloader, 0):
             # get the inputs
             inputs, labels = data
+            if args.cuda:
+                inputs, labels = inputs.cuda(), labels.cuda()
             # Forward Pass
             outputs = net(inputs)
+            outputs = outputs.logits
             # Find the Loss
             loss = criterion(outputs,labels)
+            if args.cuda:
+                loss = loss.cpu()
             # print statistics
             val_running_loss += loss.item()
-            if i % 100 == 99:    # print every 200 mini-batches
+            if i % 10 == 9:    # print every 10 batches
                 # print('[%d, %5d] loss: %.3f' %
                 #     (epoch + 1, i + 1, val_running_loss / 200))
-                valloss.append(val_running_loss/100)
+                valloss.append(val_running_loss/10)
                 val_running_loss = 0.0
         epoch_time.append(time.time() - start)
+        print(f"epoch{epoch} : {time.time()-start}")
     return trainloss,valloss,nepoch,epoch_time
 
 ##############################################
+
+# Analysis tool
+
+# functions to show the loss
+def loss_curve(train_loss,val_loss,epoch,title):
+    iter = range(1, len(train_loss) + 1)
+    # Plot the loss curve
+    
+    slope, intercept, r_value, p_value, std_err = stats.linregress(iter, train_loss)
+    plt.figure(figsize=(20, 6))
+    plt.subplot(121)
+    plt.plot(iter, train_loss, marker='o', linestyle='-', color='b')
+    plt.plot(iter, intercept + slope * iter, color="red", label="Line of Best Fit")
+    plt.annotate(f"Slope : {round(slope, 3)}, R : {round(r_value,3)}", (round(len(train_loss)/2), min(train_loss)), color='r',
+    fontsize=10, ha='center', va='bottom', backgroundcolor='w')
+    plt.title(f'Training loss Curve for {title}')
+    plt.xlabel('No. of 100 batch iteration')
+    plt.ylabel('Loss')
+    plt.grid(True)
+    for i in iter:
+        if i % (len(train_loss)/epoch) == 0:
+            plt.axvline(x=i, color='r', linestyle='--', linewidth=1)
+            plt.annotate(f'E{int(i/(len(train_loss)/epoch))}', (i, max(train_loss)), color='r',
+                     fontsize=10, ha='center', va='bottom', backgroundcolor='w')
+            
+    iter = range(1, len(val_loss) + 1)
+    plt.subplot(122)
+    plt.plot(iter, val_loss, marker='o', linestyle='-', color='b')
+    plt.title(f'Validation loss Curve for {title}')
+    plt.xlabel('No. of 10 batch iteration')
+    plt.ylabel('Loss')
+    plt.grid(True)
+    for i in iter:
+        if i % (len(val_loss)/epoch) == 0:
+            plt.axvline(x=i, color='r', linestyle='--', linewidth=1)
+            plt.annotate(f'E{int(i/(len(val_loss)/epoch))}', (i, max(val_loss)), color='r',
+                     fontsize=10, ha='center', va='bottom', backgroundcolor='w')
+            
+    plt.tight_layout()
+
+    plt.show()
+
+def eval_net(net, loader, logging, mode="baseline"):
+    net = net.eval()
+    if args.cuda:
+        net = net.cuda()
+
+    # if args.pretrained:
+    #     if args.cuda:
+    #         net.load_state_dict(torch.load(args.output_path + mode + '.pth', map_location='cuda'))
+    #     else:
+    #         net.load_state_dict(torch.load(args.output_path + mode + '.pth', map_location='cpu'))
+
+    correct = 0
+    total = 0
+    for data in loader:
+        images, labels = data
+        if args.cuda:
+            images, labels = images.cuda(), labels.cuda()
+        outputs = net(images)
+        if args.cuda:
+            outputs = outputs.cpu()
+            labels = labels.cpu()
+        _, predicted = torch.max(outputs.data, 1)
+        total += labels.size(0)
+        correct += (predicted == labels).sum().item()
+
+    # print and write to log
+    print('=' * 20)
+    print('SUMMARY of '+ mode)
+    print('Accuracy of the network on the test images: %d %%' % (
+        100 * correct / total))
+    print('=' * 520)
+    # logging.info('=' * 55)
+    # logging.info('SUMMARY of '+ mode)
+    # logging.info('Accuracy of the network on the 10000 test images: %d %%' % (
+    #     100 * correct / total))
+    # logging.info('=' * 55)
+    torch.save(net.state_dict(),f"{100*correct/total}.pth")
+
 
 ############################################
 # Transformation definition
@@ -129,74 +229,68 @@ train_transform = transforms.Compose([
 ####################################
 # Define the training dataset and dataloader.
 # You can make some modifications, e.g. batch_size, adding other hyperparameters, etc.
+from torchvision.datasets import ImageFolder
+# train_transform = transforms.Compose([
+#         transforms.ToTensor(),
+# ])
 
-train_image_path = '../train/' 
-validation_image_path = '../validation/' 
+# val_transform = transforms.Compose([
+#         transforms.ToTensor(),
+# ])
 
-trainset = ImageFolder(train_image_path, train_transform)
-valset = ImageFolder(validation_image_path, train_transform)
 
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=4,
+TrainSet = ImageFolder('../2023_ELEC5307_P2Train/train', transform=train_transform)
+ValSet = ImageFolder('../2023_ELEC5307_P2Train/test', transform=train_transform)
+# train_image_path = '../2023_ELEC5307_P2Train/train'
+# validation_image_path = '../2023_ELEC5307_P2Train/test'
+
+# trainset = ImageFolder(train_image_path, train_transform)
+# valset = ImageFolder(validation_image_path, train_transform)
+
+trainloader = torch.utils.data.DataLoader(TrainSet, batch_size=2,
                                          shuffle=True, num_workers=2)
-valloader = torch.utils.data.DataLoader(valset, batch_size=4,
+valloader = torch.utils.data.DataLoader(ValSet, batch_size=2,
                                          shuffle=True, num_workers=2)
 ####################################
 
 # ==================================
 # use cuda if called with '--cuda'.
 
-network = Network()
-if args.cuda:
-    network = network.cuda()
+
+
 
 # train and eval your trained network
 # you have to define your own 
-val_acc = train_net(network, trainloader, valloader)
+# val_acc = train_net(network, trainloader, valloader)
+# logger = create_logger("")
 
-print("final validation accuracy:", val_acc)
+# print("final validation accuracy:", val_acc)
+# criterion = nn.CrossEntropyLoss()
+# optimizer = optim.SGD(network.parameters(),lr=0.001)
+# model = NeuralNetClassifier(
+#     network,
+#     criterion=criterion,
+#     optimizer=optimizer,
+#     lr=0.001,
+#     max_epoch=20,
+#     batch_size=4,
+#     verbose=False
+# )
+
+
+# kfold = StratifiedKFold(n_splits=5,shuffle=True)
+# results = cross_val_score(model,trainloader,valloader,cv=kfold)
+# print(f"mean : {results.mean}, standard deviation : {results.std}")
 
 # ==================================
 
+if __name__ == '__main__':     # this is used for running in Windows
+    # train modified network
+    network = GoogLeNet()
+    if args.cuda:
+        network = network.cuda()
+    trainloss,valloss,nepoch,epoch_time = train_net(network, trainloader, valloader,0.001,25)
+    eval_net(network,valloader,"base")
+    loss_curve(trainloss,valloss,nepoch,"GoogLeNet")
 
-import matplotlib.pyplot as plt
-import numpy as np
-from scipy import stats
 
-# functions to show the loss
-def loss_curve(train_loss,val_loss,epoch,title):
-    iter = range(1, len(train_loss) + 1)
-    # Plot the loss curve
-    
-    slope, intercept, r_value, p_value, std_err = stats.linregress(iter, train_loss)
-    plt.figure(figsize=(20, 6))
-    plt.subplot(121)
-    plt.plot(iter, train_loss, marker='o', linestyle='-', color='b')
-    plt.plot(iter, intercept + slope * iter, color="red", label="Line of Best Fit")
-    plt.annotate(f"Slope : {round(slope, 3)}, R : {round(r_value,3)}", (round(len(train_loss)/2), min(train_loss)), color='r',
-    fontsize=10, ha='center', va='bottom', backgroundcolor='w')
-    plt.title(f'Training loss Curve for {title}')
-    plt.xlabel('No. of 1000 batch iteration')
-    plt.ylabel('Loss')
-    plt.grid(True)
-    for i in iter:
-        if i % (len(train_loss)/epoch) == 0:
-            plt.axvline(x=i, color='r', linestyle='--', linewidth=1)
-            plt.annotate(f'Epoch {int(i/(len(train_loss)/epoch))}', (i, max(train_loss)), color='r',
-                     fontsize=10, ha='center', va='bottom', backgroundcolor='w')
-            
-    iter = range(1, len(val_loss) + 1)
-    plt.subplot(122)
-    plt.plot(iter, val_loss, marker='o', linestyle='-', color='b')
-    plt.title(f'Validation loss Curve for {title}')
-    plt.xlabel('No. of 100 batch iteration')
-    plt.ylabel('Loss')
-    plt.grid(True)
-    for i in iter:
-        if i % (len(val_loss)/epoch) == 0:
-            plt.axvline(x=i, color='r', linestyle='--', linewidth=1)
-            plt.annotate(f'Epoch {int(i/(len(val_loss)/epoch))}', (i, max(val_loss)), color='r',
-                     fontsize=10, ha='center', va='bottom', backgroundcolor='w')
-            
-    plt.tight_layout()
-
-    plt.show()
