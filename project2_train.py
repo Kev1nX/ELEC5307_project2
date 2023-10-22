@@ -40,7 +40,18 @@ parser.add_argument('--cuda', action='store_true', default=False,
 args = parser.parse_args()
 generator = torch.Generator().manual_seed(5307)
 
+from torchvision.datasets import ImageFolder
+train_transform = transforms.Compose([
+        transforms.ToTensor(),
+])
 
+val_transform = transforms.Compose([
+        transforms.ToTensor(),
+])
+
+
+TrainSet = ImageFolder('../2023_ELEC5307_P2Train/train', transform=train_transform)
+ValSet = ImageFolder('../2023_ELEC5307_P2Train/test', transform=val_transform)
 
 
 
