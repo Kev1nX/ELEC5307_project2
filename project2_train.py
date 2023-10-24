@@ -151,11 +151,15 @@ def loss_curve(train_loss,val_loss,epoch,title):
     plt.xlabel('No. of 100 batch iteration')
     plt.ylabel('Loss')
     plt.grid(True)
+    count = 0
     for i in iter:
         if i % (len(train_loss)/epoch) == 0:
-            plt.axvline(x=i, color='r', linestyle='--', linewidth=1)
-            plt.annotate(f'E{int(i/(len(train_loss)/epoch))}', (i, max(train_loss)), color='r',
-                     fontsize=10, ha='center', va='bottom', backgroundcolor='w')
+            count+=1
+            if count == 2:
+                plt.axvline(x=i, color='r', linestyle='--', linewidth=1)
+                plt.annotate(f'E{int(i/(len(train_loss)/epoch))}', (i, max(train_loss)), color='r',
+                        fontsize=10, ha='center', va='bottom', backgroundcolor='w')
+                count = 0
             
     iter = range(1, len(val_loss) + 1)
     plt.subplot(122)
@@ -275,7 +279,7 @@ if __name__ == '__main__':     # this is used for running in Windows
     network = GoogLeNet()
     if args.cuda:
         network = network.cuda()
-    trainloss,valloss,nepoch,epoch_time = train_net(network, trainloader, valloader,0.0001,50)
+    trainloss,valloss,nepoch,epoch_time = train_net(network, trainloader, valloader,0.0001,100)
     eval_net(network,valloader,"base")
     loss_curve(trainloss,valloss,nepoch,"GoogLeNet")
 
