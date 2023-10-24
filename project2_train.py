@@ -266,22 +266,7 @@ valloader = torch.utils.data.DataLoader(ValSet, batch_size=2,
 # logger = create_logger("")
 
 # print("final validation accuracy:", val_acc)
-# criterion = nn.CrossEntropyLoss()
-# optimizer = optim.SGD(network.parameters(),lr=0.001)
-# model = NeuralNetClassifier(
-#     network,
-#     criterion=criterion,
-#     optimizer=optimizer,
-#     lr=0.001,
-#     max_epoch=20,
-#     batch_size=4,
-#     verbose=False
-# )
 
-
-# kfold = StratifiedKFold(n_splits=5,shuffle=True)
-# results = cross_val_score(model,trainloader,valloader,cv=kfold)
-# print(f"mean : {results.mean}, standard deviation : {results.std}")
 
 # ==================================
 
@@ -290,7 +275,7 @@ if __name__ == '__main__':     # this is used for running in Windows
     network = GoogLeNet()
     if args.cuda:
         network = network.cuda()
-    trainloss,valloss,nepoch,epoch_time = train_net(network, trainloader, valloader,0.0001,25)
+    trainloss,valloss,nepoch,epoch_time = train_net(network, trainloader, valloader,0.0001,50)
     eval_net(network,valloader,"base")
     loss_curve(trainloss,valloss,nepoch,"GoogLeNet")
 
