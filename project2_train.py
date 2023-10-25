@@ -71,16 +71,21 @@ def train_net(net, trainloader, valloader,learningrate,nepoch):
     # val_accuracy is the validation accuracy of each epoch. You can save your model base on the best validation accuracy.
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(net.parameters(), lr=learningrate)
-    # take sample for faster training, can also use samplesize = 1 to train with full dataset
-    
+    # modified section
+    scheduler = optim.lr_scheduler.StepLR(optimizer,1,0.9295372635802442)
+    ###
     trainloss = []
     valloss = []
     epoch_time = []
     net = net.train()
     for epoch in range(nepoch):  # loop over the dataset multiple times
         start = time.time()
+        
+        # modified section
+        if type(scheduler).__name__ != 'NoneType':
+            scheduler.step()
+        #####
         running_loss = 0.0
-
         for i, data in enumerate(trainloader, 0):
             # get the inputs
             inputs, labels = data
@@ -100,10 +105,10 @@ def train_net(net, trainloader, valloader,learningrate,nepoch):
 
             # print statistics
             running_loss += loss.item()
-            if i % 100 == 99:    # print every 20 mini-batches
+            if i % 20 == 19:    # print every 20 mini-batches
                 # print('[%d, %5d] loss: %.3f' %
                 #     (epoch + 1, i + 1, running_loss / 2000))
-                trainloss.append(running_loss/100)
+                trainloss.append(running_loss/20)
                 running_loss = 0.0
     
         val_running_loss = 0.0
@@ -122,10 +127,10 @@ def train_net(net, trainloader, valloader,learningrate,nepoch):
                 loss = loss.cuda()
             # print statistics
             val_running_loss += loss.item()
-            if i % 10 == 9:    # print every 10 batches
+            if i % 1 == 0:    # print every 10 batches
                 # print('[%d, %5d] loss: %.3f' %
                 #     (epoch + 1, i + 1, val_running_loss / 200))
-                valloss.append(val_running_loss/10)
+                valloss.append(val_running_loss/1)
                 val_running_loss = 0.0
         epoch_time.append(time.time() - start)
         print(f"epoch{epoch} : {time.time()-start}")
@@ -226,7 +231,7 @@ def eval_net(net, loader, logging, mode="baseline"):
 train_transform = transforms.Compose([
     transforms.RandomCrop(224),
     transforms.ToTensor(), 
-    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    transforms.Normalize((0.564108, 0.50346, 0.427237), (0.20597, 0.206595, 0.21542))
 ])
 
 ####################################
@@ -252,9 +257,9 @@ ValSet = ImageFolder('../2023_ELEC5307_P2Train/test', transform=train_transform)
 # trainset = ImageFolder(train_image_path, train_transform)
 # valset = ImageFolder(validation_image_path, train_transform)
 
-trainloader = torch.utils.data.DataLoader(TrainSet, batch_size=2,
+trainloader = torch.utils.data.DataLoader(TrainSet, batch_size=32,
                                          shuffle=True, num_workers=2)
-valloader = torch.utils.data.DataLoader(ValSet, batch_size=2,
+valloader = torch.utils.data.DataLoader(ValSet, batch_size=32,
                                          shuffle=True, num_workers=2)
 ####################################
 
@@ -279,7 +284,8 @@ if __name__ == '__main__':     # this is used for running in Windows
     network = GoogLeNet()
     if args.cuda:
         network = network.cuda()
-    trainloss,valloss,nepoch,epoch_time = train_net(network, trainloader, valloader,0.000289,150)
+    trainloss,valloss,nepoch,epoch_time = train_net(network, trainloader, valloader,0.00014464051511481836,75)
+    print(trainloss)
     eval_net(network,valloader,"base")
     loss_curve(trainloss,valloss,nepoch,"GoogLeNet")
 
