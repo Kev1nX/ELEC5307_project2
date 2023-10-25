@@ -113,7 +113,7 @@ def train_net(trial):
     optimizer_name = trial.suggest_categorical("optimizer", ["Adam", "RMSprop", "SGD"])
     scheduler_name = "StepLR"
     step_size = trial.suggest_int("stepsize",1,25,log=True)
-    gamma = trial.suggest_float("gamma",0.1,1,log=True)
+    gamma = trial.suggest_float("gamma",0.9,1,log=True)
     learningrate = trial.suggest_float("lr", 1e-5, 1e-1, log=True)    
     nepoch = trial.suggest_int("epoch",50,75,log=True)
     optimizer = getattr(optim, optimizer_name)(net.parameters(), lr=learningrate)
