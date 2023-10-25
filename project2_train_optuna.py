@@ -76,7 +76,7 @@ def create_logger(final_output_path):
 train_transform = transforms.Compose([
     transforms.RandomCrop(224),
     transforms.ToTensor(), 
-    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    transforms.Normalize((0.564108, 0.50346, 0.427237), (0.20597, 0.206595, 0.21542))
 ])
 
 ####################################
@@ -112,7 +112,8 @@ def train_net(trial):
     # hyperparameters that is being trialed and optimised
     optimizer_name = trial.suggest_categorical("optimizer", ["Adam", "RMSprop", "SGD"])
     scheduler_name = "StepLR"
-    step_size = trial.suggest_int("stepsize",1,25,log=True)
+    # step_size = trial.suggest_int("stepsize",1,25,log=True)
+    step_size = 1
     gamma = trial.suggest_float("gamma",0.9,1,log=True)
     learningrate = trial.suggest_float("lr", 1e-5, 1e-1, log=True)    
     nepoch = trial.suggest_int("epoch",50,75,log=True)
