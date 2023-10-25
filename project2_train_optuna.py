@@ -48,6 +48,25 @@ parser.add_argument('--cuda', action='store_true', default=False,
                     help='Used when there are cuda installed.')
 args = parser.parse_args()
 generator = torch.Generator().manual_seed(5307)
+
+
+def create_logger(final_output_path):
+    log_file = '{}.log'.format(final_output_path)
+    head = '%(asctime)-15s %(message)s'
+    logging.basicConfig(filename=os.path.join(log_file),
+                        format=head)
+    clogger = logging.getLogger()
+    clogger.setLevel(logging.INFO)
+    # add handler
+    # print to stdout and log file
+    ch = logging.StreamHandler(sys.stdout)
+    ch.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+    clogger.addHandler(ch)
+    return clogger
+
+
 ############################################
 # Transformation definition
 # NOTE:
@@ -81,7 +100,7 @@ def get_dataloader():
     return trainloader, valloader
 
 ####################################
-
+log = create_logger(f"optuna_trials")
 # # basic training process used in last project
 def train_net(trial):
 ########## ToDo: Your codes goes below #######
@@ -92,10 +111,13 @@ def train_net(trial):
     criterion = nn.CrossEntropyLoss()
     # hyperparameters that is being trialed and optimised
     optimizer_name = trial.suggest_categorical("optimizer", ["Adam", "RMSprop", "SGD"])
+    scheduler_name = "StepLR"
+    step_size = trial.suggest_int("stepsize",1,25,log=True)
+    gamma = trial.suggest_float("gamma",0.1,1,log=True)
     learningrate = trial.suggest_float("lr", 1e-5, 1e-1, log=True)    
-    nepoch = 25
+    nepoch = trial.suggest_int("epoch",50,75,log=True)
     optimizer = getattr(optim, optimizer_name)(net.parameters(), lr=learningrate)
-
+    scheduler = getattr(optim.lr_scheduler,scheduler_name)(optimizer, step_size=step_size, gamma=gamma)
     # take sample for faster training, can also use samplesize = 1 to train with full dataset
     trainloader, valloader = get_dataloader()
     trainloss = []
@@ -103,6 +125,8 @@ def train_net(trial):
     epoch_time = []
     
     for epoch in range(nepoch):  # loop over the dataset multiple times
+        if type(scheduler).__name__ != 'NoneType':
+            scheduler.step()
         start = time.time()
         running_loss = 0.0
         net = net.train()
@@ -264,28 +288,26 @@ def eval_net(net, loader, logging, mode="baseline"):
 if __name__ == '__main__':     # this is used for running in Windows
     # train modified network
     network = GoogLeNet()
+    
     if args.cuda:
         network = network.cuda()
     study = optuna.create_study(direction="maximize")
-    study.optimize(train_net, n_trials=20, timeout=10000)
+    study.optimize(train_net, n_trials=25, timeout=10000)
     pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
     complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])
     print("Study statistics: ")
     print("  Number of finished trials: ", len(study.trials))
     print("  Number of pruned trials: ", len(pruned_trials))
     print("  Number of complete trials: ", len(complete_trials))
-
-    print("Best trial:")
+    for completed in complete_trials:
+        log.info(f"Trial {completed.number} finished with value : {completed.value} and parameters : {completed.params}")
     trial = study.best_trial
-
-    print("  Value: ", trial.value)
-
-    print("  Params: ")
+    value = trial.value
+    log.info("Best trial:")
+    log.info(f"Value: {value}")
+    log.info("  Params: ")
     for key, value in trial.params.items():
-        print("    {}: {}".format(key, value))
-    # trainloss,valloss,nepoch,epoch_time,accuracy = train_net(network,trial,100)
-    # trainloader,valloader = get_dataloader()
-    # eval_net(network,valloader,"base")
-    # loss_curve(trainloss,valloss,nepoch,"GoogLeNet")
+        log.info("    {}: {}".format(key, value))
+
 
 

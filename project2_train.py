@@ -70,7 +70,7 @@ def train_net(net, trainloader, valloader,learningrate,nepoch):
     val_accuracy = 0
     # val_accuracy is the validation accuracy of each epoch. You can save your model base on the best validation accuracy.
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(net.parameters(), lr=learningrate, momentum=0.9)
+    optimizer = optim.Adam(net.parameters(), lr=learningrate)
     # take sample for faster training, can also use samplesize = 1 to train with full dataset
     
     trainloss = []
@@ -119,7 +119,7 @@ def train_net(net, trainloader, valloader,learningrate,nepoch):
             # Find the Loss
             loss = criterion(outputs,labels)
             if args.cuda:
-                loss = loss.cpu()
+                loss = loss.cuda()
             # print statistics
             val_running_loss += loss.item()
             if i % 10 == 9:    # print every 10 batches
@@ -197,8 +197,8 @@ def eval_net(net, loader, logging, mode="baseline"):
             images, labels = images.cuda(), labels.cuda()
         outputs = net(images)
         if args.cuda:
-            outputs = outputs.cpu()
-            labels = labels.cpu()
+            outputs = outputs.cuda()
+            labels = labels.cuda()
         _, predicted = torch.max(outputs.data, 1)
         total += labels.size(0)
         correct += (predicted == labels).sum().item()
@@ -279,7 +279,7 @@ if __name__ == '__main__':     # this is used for running in Windows
     network = GoogLeNet()
     if args.cuda:
         network = network.cuda()
-    trainloss,valloss,nepoch,epoch_time = train_net(network, trainloader, valloader,0.0001,100)
+    trainloss,valloss,nepoch,epoch_time = train_net(network, trainloader, valloader,0.000289,150)
     eval_net(network,valloader,"base")
     loss_curve(trainloss,valloss,nepoch,"GoogLeNet")
 
