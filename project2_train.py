@@ -284,7 +284,7 @@ if __name__ == '__main__':     # this is used for running in Windows
     network = GoogLeNet()
     if args.cuda:
         network = network.cuda()
-    trainloss,valloss,nepoch,epoch_time = train_net(network, trainloader, valloader,0.00014464051511481836,67)
+    trainloss,valloss,nepoch,epoch_time = train_net(network, trainloader, valloader,0.00014464051511481836,40)
     print(trainloss)
     eval_net(network,valloader,"base")
     loss_curve(trainloss,valloss,nepoch,"GoogLeNet")

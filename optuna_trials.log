@@ -1,0 +1,12 @@
+2023-10-26 00:00:44,395 Trial 0 finished with value : 0.73125 and parameters : {'optimizer': 'RMSprop', 'gamma': 0.9263812548206933, 'lr': 0.0006378605953044348, 'epoch': 67}
+2023-10-26 00:00:44,405 Trial 1 finished with value : 0.70625 and parameters : {'optimizer': 'Adam', 'gamma': 0.9247261330217592, 'lr': 0.0013956471756042576, 'epoch': 73}
+2023-10-26 00:00:44,405 Trial 2 finished with value : 0.921875 and parameters : {'optimizer': 'SGD', 'gamma': 0.9735932397298144, 'lr': 0.01501407120348645, 'epoch': 62}
+2023-10-26 00:00:44,405 Trial 3 finished with value : 0.734375 and parameters : {'optimizer': 'RMSprop', 'gamma': 0.9691327530248814, 'lr': 0.001957073543188147, 'epoch': 64}
+2023-10-26 00:00:44,405 Trial 4 finished with value : 0.871875 and parameters : {'optimizer': 'SGD', 'gamma': 0.9406821148023113, 'lr': 0.0071849313657599894, 'epoch': 75}
+2023-10-26 00:00:44,406 Best trial:
+2023-10-26 00:00:44,407 Value: 0.921875
+2023-10-26 00:00:44,407   Params: 
+2023-10-26 00:00:44,407     optimizer: SGD
+2023-10-26 00:00:44,407     gamma: 0.9735932397298144
+2023-10-26 00:00:44,407     lr: 0.01501407120348645
+2023-10-26 00:00:44,408     epoch: 62
